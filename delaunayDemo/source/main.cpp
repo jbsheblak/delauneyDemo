@@ -47,7 +47,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-    NRenderer::initialize(gWindow);
+    if (!NRenderer::initialize(gWindow) || !NDemo::initialize())
+    {
+        return 0;
+    }
 
     // Main message loop:
     MSG msg;
@@ -60,6 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         NDemo::render();
     }
 
+    NDemo::shutdown();
     NRenderer::shutdown();
 
     return (int) msg.wParam;

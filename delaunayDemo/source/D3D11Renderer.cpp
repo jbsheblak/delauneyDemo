@@ -8,6 +8,201 @@ TD3D11DeviceContextPtr gpDeviceCtx;
 TDXGISwapChain1Ptr gpSwapChain;
 TD3D11RenderTargetViewPtr gpTargetColor;
 TD3D11DepthTargetViewPtr gpTargetDepth;
+uint32_t gWindowWidth, gWindowHeight;
+
+// ======================================================================================
+// FXC
+// ======================================================================================
+
+namespace NFXC
+{
+    typedef HRESULT(*TD3DCompile)(LPCVOID                pSrcData,
+                                  SIZE_T                 SrcDataSize,
+                                  LPCSTR                 pSourceName,
+                                  const D3D_SHADER_MACRO *pDefines,
+                                  ID3DInclude            *pInclude,
+                                  LPCSTR                 pEntrypoint,
+                                  LPCSTR                 pTarget,
+                                  UINT                   Flags1,
+                                  UINT                   Flags2,
+                                  ID3DBlob               **ppCode,
+                                  ID3DBlob               **ppErrorMsgs);
+
+    typedef HRESULT(*TD3DReflect)(LPCVOID pSrcData,
+                                    SIZE_T  SrcDataSize,
+                                    REFIID  pInterface,
+                                    void    **ppReflector);
+
+    HMODULE spModule = nullptr;
+    TD3DCompile spD3DCompile = nullptr;
+    TD3DReflect spD3DReflect = nullptr;
+
+#if 0
+    void log_error_report(std::string const &errorString, std::string const & shaderSource, std::string const& shaderPath)
+    {
+        // parse the error buffer for line number and message information
+        std::vector<SErrorLineAndMsg> errorInformation;
+        {
+            CStringUtils::TStringVector const errorStringLines = CStringUtils::Tokenize(errorString, "\n", CStringUtils::kAllowEmptyTokens_No);
+
+            std::string const lineTagStartStr = "(";
+            std::string const lineTagEndStr = "): error";
+            std::string const lineNumEndStr = ",";
+                
+            errorInformation.reserve(errorStringLines.size());
+            for (std::string const & errorStringLine : errorStringLines)
+            {
+                // example:
+                // Simple.hlsl(99,23-65): error X3020: type mismatch
+                    
+                std::string::size_type const lineTagStart = errorStringLine.find(lineTagStartStr);
+                if (lineTagStart != std::string::npos)
+                {
+                    std::string::size_type const lineTagEnd = errorStringLine.find(lineTagEndStr, lineTagStart);
+                    if (lineTagEnd != std::string::npos)
+                    {
+                        std::string::size_type const lineNumEnd = errorStringLine.find(lineNumEndStr, lineTagStart);
+                        if ((lineNumEnd != std::string::npos) && (lineNumEnd <= lineTagEnd))
+                        {
+                            std::string::size_type const lineNumStartIdx = lineTagStart + lineTagStartStr.size();
+                            std::string::size_type const lineContentStartIdx = lineTagEnd + lineTagEndStr.size();
+                                
+                            SErrorLineAndMsg errorLineAndMsg;
+                            errorLineAndMsg.mLine = CStringUtils::ParseUint32(errorStringLine.substr(lineNumStartIdx, (lineNumEnd-lineNumStartIdx)));
+                            errorLineAndMsg.mMessage = errorStringLine.substr(lineContentStartIdx, errorStringLine.size()-lineContentStartIdx);
+                            errorInformation.push_back(std::move(errorLineAndMsg));
+                        }
+                    }
+                }
+            }
+        }
+
+        std::string const brokenPath = "D:/BrokenCompileShader.hlsl";
+
+        std::string brokenSource;
+        {
+            CStringUtils::TStringVector shaderSourceLines = CStringUtils::Tokenize(shaderSource, "\n", CStringUtils::kAllowEmptyTokens_Yes);
+
+            // iterate backwards so we can insert information without disturbing line numbers
+            for (int i = int(errorInformation.size()-1); i >= 0; --i)
+            {   
+                SErrorLineAndMsg const & errorInfo = errorInformation[i];
+                if (errorInfo.mLine <= shaderSourceLines.size())
+                {
+                    shaderSourceLines.insert(shaderSourceLines.begin() + errorInfo.mLine - 1, std::string("// !!! ") + errorInfo.mMessage);
+                }
+            }
+                    
+            brokenSource += "/*\n";
+            brokenSource += shaderPath;
+            brokenSource += "\n";
+            brokenSource += errorString;
+            brokenSource += "*/\n";
+
+            for (std::string const & shaderSourceLine : shaderSourceLines)
+            {
+                brokenSource += shaderSourceLine;
+                brokenSource += "\n";
+            }
+        }
+
+        sBrokenSourceLogger(brokenSource, errorString);
+    }
+#endif
+
+    bool initialize()
+    {
+        if (spModule == nullptr)
+        {
+            static char const * skCompiler = "D3dcompiler_47.dll";
+
+            HMODULE const pModule = LoadLibraryA(skCompiler);
+            if (pModule == nullptr)
+            {
+                printf("Failed to load compiler dll: %s", skCompiler);
+                return false;
+            }
+
+            TD3DCompile const pD3DCompile = reinterpret_cast<TD3DCompile>(GetProcAddress(pModule, "D3DCompile"));
+            if (pD3DCompile == nullptr)
+            {
+                printf("Failed to find D3DCompile function pointer.");
+                return false;
+            }
+
+            TD3DReflect const pD3DReflect = reinterpret_cast<TD3DReflect>(GetProcAddress(pModule, "D3DReflect"));
+            if (pD3DReflect == nullptr)
+            {
+                printf("Failed to find D3DReflect function pointer.");
+                return false;
+            }
+
+            spModule = pModule;
+            spD3DCompile = pD3DCompile;
+            spD3DReflect = pD3DReflect;
+        }
+
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------------
+
+    bool compile(std::string const &srcData,
+                 std::string const &srcPath,
+                 char const * pEntrypoint,
+                 char const * pTarget,
+                 TMicrosoftComPtr<ID3DBlob> &pShader)
+    {
+        if (!initialize())
+        {
+            return false;
+        }
+
+        TMicrosoftComPtr<ID3DBlob> pErrorMsgs;
+        if (FAILED(spD3DCompile(srcData.c_str(),
+                                srcData.size(),
+                                srcPath.c_str(),
+                                nullptr /*pDefines*/,
+                                nullptr /*pIncludes*/,
+                                pEntrypoint,
+                                pTarget,
+                                0 /*Flags1*/,
+                                0 /*Flags2*/,
+                                pShader.GetAddressOf(),
+                                pErrorMsgs.GetAddressOf())))
+        {
+            char const * const pError = reinterpret_cast<char const *>(pErrorMsgs->GetBufferPointer());
+            std::string errorMsg(pError, pError + pErrorMsgs->GetBufferSize()-1);
+            printf("%s\n", errorMsg.c_str());
+            //log_error_report(errorMsg, srcData, srcPath);
+            return false;
+        }
+
+        return true;
+    }
+
+    // -----------------------------------------------------------------------------------
+
+#if 0
+    bool reflect(TMicrosoftComPtr<ID3DBlob> &pShader,
+                    TMicrosoftComPtr<ID3D12ShaderReflection> &pReflector)
+    {
+        if (!initialize())
+        {
+            return false;
+        }
+
+        if (FAILED(spD3DReflect(pShader->GetBufferPointer(),
+                                pShader->GetBufferSize(),
+                                IID_PPV_ARGS(pReflector.GetAddressOf()))))
+        {
+            return false;
+        }
+
+        return true;
+    }
+#endif
+}
 
 // =================================================================
 // NRenderer
@@ -154,6 +349,10 @@ namespace NRenderer
             {
                 return false;
             }
+
+            gWindowWidth = colorDesc.Width;
+            gWindowHeight = colorDesc.Height;
+
         }
         
         return true;

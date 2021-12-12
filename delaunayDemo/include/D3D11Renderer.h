@@ -5,10 +5,9 @@
 #include <dxgi.h>
 #include <dxgi1_5.h>
 #include <d3d11.h>
-//#include <d3d12.h>
-//#include <D3Dcompiler.h>
+#include <D3Dcompiler.h>
+#include <string>
 
-//#include "D3DX12/d3dx12.h"
 //#include "dxc/dxcapi.h"
 
 template <typename T> using TMicrosoftComPtr = Microsoft::WRL::ComPtr<T>;
@@ -43,7 +42,10 @@ typedef TMicrosoftComPtr<ID3D11DeviceContext> TD3D11DeviceContextPtr;
 typedef TMicrosoftComPtr<ID3D11Texture2D> TD3D11Texture2DPtr;
 typedef TMicrosoftComPtr<ID3D11RenderTargetView> TD3D11RenderTargetViewPtr;
 typedef TMicrosoftComPtr<ID3D11DepthStencilView> TD3D11DepthTargetViewPtr;
-
+typedef TMicrosoftComPtr<ID3D11Buffer> TD3D11BufferPtr;
+typedef TMicrosoftComPtr<ID3D11VertexShader> TD3D11VertexShaderPtr;
+typedef TMicrosoftComPtr<ID3D11PixelShader> TD3D11PixelShaderPtr;
+typedef TMicrosoftComPtr<ID3D11InputLayout> TD3D11InputLayoutPtr;
 
 #if 0
 // D3D12
@@ -94,6 +96,15 @@ typedef TMicrosoftComPtr<ID3D12DebugCommandQueue> TD3D12DebugCommandQueuePtr;
 typedef TMicrosoftComPtr<ID3D12InfoQueue> TD3D12InfoQueuePtr;
 #endif
 
+namespace NFXC
+{
+    bool compile(std::string const &srcData,
+                 std::string const &srcPath,
+                 char const * pEntrypoint,
+                 char const * pTarget,
+                 TMicrosoftComPtr<ID3DBlob> &pShader);
+}
+
 // =================================================================
 // NRenderer
 // =================================================================
@@ -103,6 +114,7 @@ extern TD3D11DeviceContextPtr gpDeviceCtx;
 extern TDXGISwapChain1Ptr gpSwapChain;
 extern TD3D11RenderTargetViewPtr gpTargetColor;
 extern TD3D11DepthTargetViewPtr gpTargetDepth;
+extern uint32_t gWindowWidth, gWindowHeight;
 
 namespace NRenderer
 {
