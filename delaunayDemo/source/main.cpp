@@ -53,6 +53,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return 0;
     }
 
+    NDemo::read_data();
+
     // Main message loop:
     MSG msg;
     while (GetMessage(&msg, nullptr, 0, 0))
@@ -64,6 +66,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         NDemo::render();
     }
 
+    NDemo::save_data();
     NDemo::shutdown();
     NRenderer::shutdown();
 
@@ -144,7 +147,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_RBUTTONUP:
         {
-            NDemo::clear_mouse_clicks();
+            NDemo::remove_last_triangle();
         }
         break;
 

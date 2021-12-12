@@ -109,6 +109,27 @@ namespace NDemo
 
         // --------------------------------------------------------------
 
+        TD3D11BufferPtr build_index_buffer(uint32_t const *pIndices, UINT32 const indexCount)
+        {
+            D3D11_BUFFER_DESC bufferDesc = {};
+            bufferDesc.ByteWidth = sizeof(uint32_t) * indexCount;
+            bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+            bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+            D3D11_SUBRESOURCE_DATA initialData = {};
+            initialData.pSysMem = pIndices;
+
+            TD3D11BufferPtr pIndexBuffer;
+            if (FAILED(gpDevice->CreateBuffer(&bufferDesc, &initialData, pIndexBuffer.ReleaseAndGetAddressOf())))
+            {
+                return TD3D11BufferPtr();
+            }
+            
+            return pIndexBuffer;
+        }
+
+        // --------------------------------------------------------------
+
         TD3D11BufferPtr build_constant_buffer(uint32_t const size)
         {
             D3D11_BUFFER_DESC bufferDesc = {};
@@ -131,7 +152,10 @@ namespace NDemo
         struct SMeshData
         {
             std::vector<SPositionColorVertex>           mVertices;
+            std::vector<uint32_t>                       mIndices;
+
             TD3D11BufferPtr                             mpVertexBuffer;
+            TD3D11BufferPtr                             mpIndexBuffer;
         };
 
         // --------------------------------------------------------------
@@ -174,7 +198,7 @@ namespace NDemo
         // setup state
         {
             D3D11_RASTERIZER_DESC rasterDesc = {};
-            rasterDesc.FillMode = D3D11_FILL_SOLID;
+            rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
             rasterDesc.CullMode = D3D11_CULL_NONE;
 
             if (FAILED(gpDevice->CreateRasterizerState(&rasterDesc, sData.mpRasterState.GetAddressOf())))
@@ -244,6 +268,7 @@ namespace NDemo
             gpDeviceCtx->OMSetRenderTargets(1, gpTargetColor.GetAddressOf(), gpTargetDepth.Get());
             gpDeviceCtx->IASetInputLayout(sData.mpInputLayout.Get());            
             gpDeviceCtx->IASetVertexBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mMesh.mpVertexBuffer.GetAddressOf(), &skPositionColorStride, &skPositionColorOffset);
+            gpDeviceCtx->IASetIndexBuffer(sData.mMesh.mpIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
             gpDeviceCtx->VSSetConstantBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mpConstantBuffer.GetAddressOf());
             gpDeviceCtx->VSSetShader(sData.mShader.mpVSShader.Get(), nullptr, 0);
@@ -251,26 +276,26 @@ namespace NDemo
             gpDeviceCtx->PSSetConstantBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mpConstantBuffer.GetAddressOf());
             gpDeviceCtx->PSSetShader(sData.mShader.mpPSShader.Get(), nullptr, 0);
 
-            uint32_t const vertCount = uint32_t(sData.mMesh.mVertices.size());
+            uint32_t const vertCount = uint32_t(sData.mMesh.mIndices.size());
             uint32_t const triCount = vertCount/3;
             uint32_t const remCount = vertCount%3;
 
             if (triCount > 0)
             {
                 gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-                gpDeviceCtx->Draw(triCount * 3, 0 /*startVertexLocation*/);
+                gpDeviceCtx->DrawIndexed(triCount * 3, 0 /*startIndexLocation*/, 0 /*baseVertexLocation*/);
             }
 
             if (remCount > 0)
             {
                 gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-                gpDeviceCtx->Draw(remCount, triCount*3);
+                gpDeviceCtx->DrawIndexed(remCount, triCount*3, 0 /*baseVertexLocation*/);
             }
 
             if (vertCount > 0)
             {
                 gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-                gpDeviceCtx->Draw(vertCount, 0);
+                gpDeviceCtx->DrawIndexed(vertCount, 0, 0 /*baseVertexLocation*/);
             }
 
             gpSwapChain->Present(1, 0);
@@ -291,11 +316,38 @@ namespace NDemo
         uint32_t const clickIdx = uint32_t(sData.mMesh.mVertices.size()) % 3;
         float const *pColor = &skColors[0] + (clickIdx * 4);
 
-        SPositionColorVertex vtx;
-        vtx.mPosition = {float(mouseX), float(gWindowHeight - mouseY), 0.0f};
-        vtx.mColor = {pColor[0], pColor[1], pColor[2], pColor[3]};
-        sData.mMesh.mVertices.push_back(vtx);
-        sData.mMesh.mpVertexBuffer = build_vertex_buffer(sData.mMesh.mVertices.data(), uint32_t(sData.mMesh.mVertices.size()));
+        float const mouseXF = float(mouseX);
+        float const mouseYF = float(gWindowHeight - mouseY);
+
+        int32_t index = -1;
+        for (int32_t i = 0; i < sData.mMesh.mVertices.size(); ++i)
+        {
+            static constexpr float const skMaxDistance = 20;
+            static constexpr float const skMaxDistanceSqr = skMaxDistance * skMaxDistance;
+
+            SPositionColorVertex const &v = sData.mMesh.mVertices[i];
+            float const distX = v.mPosition.mX - mouseXF;
+            float const distY = v.mPosition.mY - mouseYF;
+
+            if ( (distX * distX + distY * distY) <= skMaxDistanceSqr )
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (index == -1)
+        {
+            SPositionColorVertex vtx;
+            vtx.mPosition = {mouseXF, mouseYF, 0.0f};
+            vtx.mColor = {pColor[0], pColor[1], pColor[2], pColor[3]};
+            sData.mMesh.mVertices.push_back(vtx);
+            sData.mMesh.mpVertexBuffer = build_vertex_buffer(sData.mMesh.mVertices.data(), uint32_t(sData.mMesh.mVertices.size()));
+            index = int32_t(sData.mMesh.mVertices.size()-1);
+        }
+
+        sData.mMesh.mIndices.push_back(index);
+        sData.mMesh.mpIndexBuffer = build_index_buffer(sData.mMesh.mIndices.data(), uint32_t(sData.mMesh.mIndices.size()));
     }
 
     // --------------------------------------------------------------
@@ -303,6 +355,103 @@ namespace NDemo
     void clear_mouse_clicks()
     {
         sData.mMesh = SMeshData();
+    }
+
+    // --------------------------------------------------------------
+
+    void remove_last_triangle()
+    {
+        if (sData.mMesh.mIndices.size() >= 3)
+        {
+            sData.mMesh.mIndices.pop_back();
+            sData.mMesh.mIndices.pop_back();
+            sData.mMesh.mIndices.pop_back();
+        }
+        else
+        {
+            sData.mMesh.mIndices.clear();
+        }
+
+        if (sData.mMesh.mIndices.empty())
+        {
+            sData.mMesh.mpIndexBuffer.Reset();
+        }
+        else
+        {
+            sData.mMesh.mpIndexBuffer = build_index_buffer(sData.mMesh.mIndices.data(), uint32_t(sData.mMesh.mIndices.size()));
+        }
+    }
+
+    // --------------------------------------------------------------
+
+    void save_data()
+    {
+        std::ofstream outStream("mesh.bin", std::ios::out);
+        if (!outStream)
+        {
+            return;
+        }
+
+        constexpr uint32_t const skVersion = 1;
+        outStream << skVersion << std::endl;
+
+        outStream << uint32_t(sData.mMesh.mIndices.size()) << std::endl;
+        for (uint32_t const index : sData.mMesh.mIndices)
+        {
+            outStream << index << std::endl;
+        }
+
+        outStream << uint32_t(sData.mMesh.mVertices.size()) << std::endl;
+        for (SPositionColorVertex const& v : sData.mMesh.mVertices)
+        {
+            outStream << v.mPosition.mX << " " << v.mPosition.mY << " " << v.mPosition.mZ << std::endl;
+            outStream << v.mColor.mR << " " << v.mColor.mG << " " << v.mColor.mB << " " << v.mColor.mA << std::endl;
+        }
+    }
+
+    // --------------------------------------------------------------
+
+    void read_data()
+    {
+        std::ifstream inStream("mesh.bin", std::ios::in);
+        if (!inStream)
+        {
+            return;
+        }
+
+        uint32_t version = 0;
+        inStream >> version;
+
+        uint32_t indexCount = 0;
+        inStream >> indexCount;
+
+        sData.mMesh.mIndices.clear();
+        sData.mMesh.mIndices.resize(indexCount);
+        for (uint32_t &idx : sData.mMesh.mIndices)
+        {
+            inStream >> idx;
+        }
+
+        uint32_t vertexCount = 0;
+        inStream >> vertexCount;
+
+        sData.mMesh.mVertices.clear();
+        sData.mMesh.mVertices.resize(vertexCount);
+        for (SPositionColorVertex &v : sData.mMesh.mVertices)
+        {   
+            inStream >> v.mPosition.mX >> v.mPosition.mY >> v.mPosition.mZ;
+            inStream >> v.mColor.mR >> v.mColor.mG >> v.mColor.mB >> v.mColor.mA;
+        }
+
+        if (!sData.mMesh.mVertices.empty())
+        {
+            sData.mMesh.mpVertexBuffer = build_vertex_buffer(sData.mMesh.mVertices.data(), uint32_t(sData.mMesh.mVertices.size()));
+        }
+
+        if (!sData.mMesh.mIndices.empty())
+        {
+            sData.mMesh.mpIndexBuffer = build_index_buffer(sData.mMesh.mIndices.data(), uint32_t(sData.mMesh.mIndices.size()));
+        }
     }
 
     // --------------------------------------------------------------

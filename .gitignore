@@ -26,5 +26,6 @@ build/*.exp
 
 # project temp files
 data/ProcessLog.txt
+data/*.bin
 source/Game/ProcessLog.txt
 bin/**
