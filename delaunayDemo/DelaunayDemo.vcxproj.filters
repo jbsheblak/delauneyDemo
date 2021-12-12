@@ -12,8 +12,13 @@
     <ClCompile Include="source\main.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\D3D11Renderer.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="DelaunayDemo.props" />
+    <ClInclude Include="include\D3D11Renderer.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -8,6 +8,7 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+#include "D3D11Renderer.h"
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -40,12 +41,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     MSG msg;
 
+
+    NRenderer::initialize();
+
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
     {   
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    NRenderer::shutdown();
 
     return (int) msg.wParam;
 }
