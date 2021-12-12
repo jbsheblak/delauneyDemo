@@ -128,13 +128,21 @@ namespace NDemo
 
         // --------------------------------------------------------------
 
+        struct SMeshData
+        {
+            TD3D11BufferPtr                             mpVertexBuffer;
+            uint32_t                                    mVertCount;
+        };
+
+        // --------------------------------------------------------------
+
         struct SDemoData
         {
             SShader                                     mShader;
-            TD3D11InputLayoutPtr                        mpInputLayout;
-            TD3D11BufferPtr                             mpVertexBuffer;
+            TD3D11InputLayoutPtr                        mpInputLayout;            
             TD3D11BufferPtr                             mpConstantBuffer;
             TMicrosoftComPtr<ID3D11RasterizerState>     mpRasterState;
+            SMeshData                                   mMesh;
         };
 
         SDemoData sData;
@@ -166,7 +174,7 @@ namespace NDemo
         // setup state
         {
             D3D11_RASTERIZER_DESC rasterDesc = {};
-            rasterDesc.FillMode = D3D11_FILL_SOLID;// D3D11_FILL_WIREFRAME;
+            rasterDesc.FillMode = D3D11_FILL_SOLID;
             rasterDesc.CullMode = D3D11_CULL_NONE;
 
             if (FAILED(gpDevice->CreateRasterizerState(&rasterDesc, sData.mpRasterState.GetAddressOf())))
@@ -188,8 +196,9 @@ namespace NDemo
             vtxData[2].mPosition = {w, h, 0};
             vtxData[2].mColor = {0, 0, 1, 1};
 
-            sData.mpVertexBuffer = build_vertex_buffer(vtxData, sizeof(vtxData)/sizeof(vtxData[0]));
-            if (!sData.mpVertexBuffer)
+            sData.mMesh.mVertCount = sizeof(vtxData)/sizeof(vtxData[0]);
+            sData.mMesh.mpVertexBuffer = build_vertex_buffer(vtxData, sData.mMesh.mVertCount);
+            if (!sData.mMesh.mpVertexBuffer)
             {
                 return false;
             }
@@ -253,7 +262,7 @@ namespace NDemo
             gpDeviceCtx->OMSetRenderTargets(1, gpTargetColor.GetAddressOf(), gpTargetDepth.Get());
             gpDeviceCtx->IASetInputLayout(sData.mpInputLayout.Get());
             gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            gpDeviceCtx->IASetVertexBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mpVertexBuffer.GetAddressOf(), &skPositionColorStride, &skPositionColorOffset);
+            gpDeviceCtx->IASetVertexBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mMesh.mpVertexBuffer.GetAddressOf(), &skPositionColorStride, &skPositionColorOffset);
 
             gpDeviceCtx->VSSetConstantBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mpConstantBuffer.GetAddressOf());
             gpDeviceCtx->VSSetShader(sData.mShader.mpVSShader.Get(), nullptr, 0);
@@ -261,7 +270,7 @@ namespace NDemo
             gpDeviceCtx->PSSetConstantBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mpConstantBuffer.GetAddressOf());
             gpDeviceCtx->PSSetShader(sData.mShader.mpPSShader.Get(), nullptr, 0);
 
-            gpDeviceCtx->Draw(3 /*vertexCount*/, 0 /*startVertexLocation*/);
+            gpDeviceCtx->Draw(sData.mMesh.mVertCount, 0 /*startVertexLocation*/);
 
             gpSwapChain->Present(1, 0);
         }
