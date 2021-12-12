@@ -34,11 +34,15 @@ typedef TMicrosoftComPtr<IDXGIResource> TDXGIResourcePtr;
 typedef TMicrosoftComPtr<IDXGISurface1> TDXGISurface1Ptr;
 typedef TMicrosoftComPtr<IDXGIFactory4> TDXGIFactory4Ptr;
 typedef TMicrosoftComPtr<IDXGISwapChain> TDXGISwapChainPtr;
+typedef TMicrosoftComPtr<IDXGISwapChain1> TDXGISwapChain1Ptr;
 typedef TMicrosoftComPtr<IDXGISwapChain3> TDXGISwapChain3Ptr;
 
 // D3D11
 typedef TMicrosoftComPtr<ID3D11Device> TD3D11DevicePtr;
 typedef TMicrosoftComPtr<ID3D11DeviceContext> TD3D11DeviceContextPtr;
+typedef TMicrosoftComPtr<ID3D11Texture2D> TD3D11Texture2DPtr;
+typedef TMicrosoftComPtr<ID3D11RenderTargetView> TD3D11RenderTargetViewPtr;
+typedef TMicrosoftComPtr<ID3D11DepthStencilView> TD3D11DepthTargetViewPtr;
 
 
 #if 0
@@ -94,9 +98,14 @@ typedef TMicrosoftComPtr<ID3D12InfoQueue> TD3D12InfoQueuePtr;
 // NRenderer
 // =================================================================
 
+extern TD3D11DevicePtr gpDevice;
+extern TD3D11DeviceContextPtr gpDeviceCtx;
+extern TDXGISwapChain1Ptr gpSwapChain;
+extern TD3D11RenderTargetViewPtr gpTargetColor;
+extern TD3D11DepthTargetViewPtr gpTargetDepth;
 
 namespace NRenderer
 {
-    bool initialize();
+    bool initialize(HWND hWnd);
     void shutdown();
 };
