@@ -4,6 +4,7 @@
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files
 #include <windows.h>
+#include <windowsx.h>
 #include <stdlib.h>
 #include <malloc.h>
 #include <memory.h>
@@ -132,6 +133,21 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
         }
         break;
+
+    case WM_LBUTTONUP:
+        {
+            int xPos = GET_X_LPARAM(lParam); 
+            int yPos = GET_Y_LPARAM(lParam);
+            NDemo::add_mouse_click(xPos, yPos);
+        }
+        break;
+
+    case WM_RBUTTONUP:
+        {
+            NDemo::clear_mouse_clicks();
+        }
+        break;
+
     case WM_DESTROY:
         PostQuitMessage(0);
         break;

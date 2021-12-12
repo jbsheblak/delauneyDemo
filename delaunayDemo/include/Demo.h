@@ -1,5 +1,6 @@
 
 #pragma once
+#include <stdint.h>
 
 // =================================================================
 // NDemo
@@ -11,4 +12,7 @@ namespace NDemo
     void shutdown();
     void simulate();
     void render();
+
+    void add_mouse_click(int32_t const mouseX, int32_t const mouseY);
+    void clear_mouse_clicks();
 }

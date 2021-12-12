@@ -130,8 +130,8 @@ namespace NDemo
 
         struct SMeshData
         {
+            std::vector<SPositionColorVertex>           mVertices;
             TD3D11BufferPtr                             mpVertexBuffer;
-            uint32_t                                    mVertCount;
         };
 
         // --------------------------------------------------------------
@@ -185,24 +185,6 @@ namespace NDemo
 
         // setup buffers
         {
-            float const w = float(gWindowWidth);
-            float const h = float(gWindowHeight);
-
-            SPositionColorVertex vtxData[3];
-            vtxData[0].mPosition = {0, 0, 0};
-            vtxData[0].mColor = {1, 0, 0, 1};
-            vtxData[1].mPosition = {w, 0, 0};
-            vtxData[1].mColor = {0, 1, 0, 1};
-            vtxData[2].mPosition = {w, h, 0};
-            vtxData[2].mColor = {0, 0, 1, 1};
-
-            sData.mMesh.mVertCount = sizeof(vtxData)/sizeof(vtxData[0]);
-            sData.mMesh.mpVertexBuffer = build_vertex_buffer(vtxData, sData.mMesh.mVertCount);
-            if (!sData.mMesh.mpVertexBuffer)
-            {
-                return false;
-            }
-
             sData.mpConstantBuffer = build_constant_buffer(sizeof(float) * 16);
         }
 
@@ -260,8 +242,7 @@ namespace NDemo
             gpDeviceCtx->RSSetState(sData.mpRasterState.Get());
 
             gpDeviceCtx->OMSetRenderTargets(1, gpTargetColor.GetAddressOf(), gpTargetDepth.Get());
-            gpDeviceCtx->IASetInputLayout(sData.mpInputLayout.Get());
-            gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            gpDeviceCtx->IASetInputLayout(sData.mpInputLayout.Get());            
             gpDeviceCtx->IASetVertexBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mMesh.mpVertexBuffer.GetAddressOf(), &skPositionColorStride, &skPositionColorOffset);
 
             gpDeviceCtx->VSSetConstantBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mpConstantBuffer.GetAddressOf());
@@ -270,10 +251,58 @@ namespace NDemo
             gpDeviceCtx->PSSetConstantBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mpConstantBuffer.GetAddressOf());
             gpDeviceCtx->PSSetShader(sData.mShader.mpPSShader.Get(), nullptr, 0);
 
-            gpDeviceCtx->Draw(sData.mMesh.mVertCount, 0 /*startVertexLocation*/);
+            uint32_t const vertCount = uint32_t(sData.mMesh.mVertices.size());
+            uint32_t const triCount = vertCount/3;
+            uint32_t const remCount = vertCount%3;
+
+            if (triCount > 0)
+            {
+                gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                gpDeviceCtx->Draw(triCount * 3, 0 /*startVertexLocation*/);
+            }
+
+            if (remCount > 0)
+            {
+                gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+                gpDeviceCtx->Draw(remCount, triCount*3);
+            }
+
+            if (vertCount > 0)
+            {
+                gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+                gpDeviceCtx->Draw(vertCount, 0);
+            }
 
             gpSwapChain->Present(1, 0);
         }
+    }
+
+    // --------------------------------------------------------------
+
+    void add_mouse_click(int32_t const mouseX, int32_t const mouseY)
+    {
+        static float const skColors [] =
+        {
+            1.0f, 0.0f, 0.0f, 1.0f,
+            0.0f, 1.0f, 0.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f,
+        };
+
+        uint32_t const clickIdx = uint32_t(sData.mMesh.mVertices.size()) % 3;
+        float const *pColor = &skColors[0] + (clickIdx * 4);
+
+        SPositionColorVertex vtx;
+        vtx.mPosition = {float(mouseX), float(gWindowHeight - mouseY), 0.0f};
+        vtx.mColor = {pColor[0], pColor[1], pColor[2], pColor[3]};
+        sData.mMesh.mVertices.push_back(vtx);
+        sData.mMesh.mpVertexBuffer = build_vertex_buffer(sData.mMesh.mVertices.data(), uint32_t(sData.mMesh.mVertices.size()));
+    }
+
+    // --------------------------------------------------------------
+
+    void clear_mouse_clicks()
+    {
+        sData.mMesh = SMeshData();
     }
 
     // --------------------------------------------------------------
