@@ -18,12 +18,18 @@
     <ClCompile Include="source\Demo.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\Delaunay.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\D3D11Renderer.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\Demo.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Delaunay.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

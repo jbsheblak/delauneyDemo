@@ -7,6 +7,7 @@
 #include <sstream>
 #include <optional>
 #include <DirectXMath.h>
+#include "Delaunay.h"
 
 // =================================================================
 // NDemo
@@ -306,11 +307,18 @@ namespace NDemo
 
     void add_mouse_click(int32_t const mouseX, int32_t const mouseY)
     {
-        static float const skColors [] =
+        /*static float const skColors [] =
         {
             1.0f, 0.0f, 0.0f, 1.0f,
             0.0f, 1.0f, 0.0f, 1.0f,
             0.0f, 0.0f, 1.0f, 1.0f,
+        };*/
+
+        static float const skColors [] =
+        {
+            0.5f, 0.5f, 0.5f, 1.0f,
+            0.5f, 0.5f, 0.5f, 1.0f,
+            0.5f, 0.5f, 0.5f, 1.0f,
         };
 
         uint32_t const clickIdx = uint32_t(sData.mMesh.mVertices.size()) % 3;
@@ -442,6 +450,14 @@ namespace NDemo
             inStream >> v.mPosition.mX >> v.mPosition.mY >> v.mPosition.mZ;
             inStream >> v.mColor.mR >> v.mColor.mG >> v.mColor.mB >> v.mColor.mA;
         }
+
+
+#if 1
+        NDelaunay::doit(sData.mMesh.mIndices.data(),
+                        uint32_t(sData.mMesh.mIndices.size()),
+                        sData.mMesh.mVertices.data(),
+                        uint32_t(sizeof(SPositionColorVertex)));
+#endif
 
         if (!sData.mMesh.mVertices.empty())
         {
