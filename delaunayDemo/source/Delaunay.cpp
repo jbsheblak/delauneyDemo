@@ -93,8 +93,16 @@ namespace NDelaunay
         return (detWinding * detQuery) < 0;
     }
 
+    static constexpr uint32_t const skInvalidIndex = ~0u;
+
     struct SEdge
     {
+        explicit SEdge()
+            : mV0(skInvalidIndex)
+            , mV1(skInvalidIndex)
+        {
+        }
+
         explicit SEdge(uint32_t const v0, uint32_t const v1)
             : mV0(v0 < v1 ? v0 : v1)
             , mV1(v0 > v1 ? v0 : v1)
@@ -109,6 +117,16 @@ namespace NDelaunay
             }
 
             return mV0 < other.mV0;
+        }
+
+        bool operator == (SEdge const &other) const
+        {
+            return (mV0 == other.mV0) && (mV1 == other.mV1);
+        }
+
+        bool operator != (SEdge const &other) const
+        {
+            return !(*this == other);
         }
 
         uint32_t mV0;
@@ -127,23 +145,21 @@ namespace NDelaunay
         bool    mMarked;
     };
 
-    static constexpr uint32_t const skInvalidTriIndex = ~0u;
-
     struct STriPair
     {
         explicit STriPair()
-            : mTri0(skInvalidTriIndex)
-            , mTri1(skInvalidTriIndex)
+            : mTri0(skInvalidIndex)
+            , mTri1(skInvalidIndex)
         {
         }
 
         void Accumulate(uint32_t const tri)
         {
-            if (mTri0 == skInvalidTriIndex)
+            if (mTri0 == skInvalidIndex)
             {
                 mTri0 = tri;
             }
-            else if (mTri1 == skInvalidTriIndex)
+            else if (mTri1 == skInvalidIndex)
             {
                 mTri1 = tri;
             }
@@ -155,7 +171,20 @@ namespace NDelaunay
 
         bool HasPairedTriangles() const
         {
-            return (mTri0 != skInvalidTriIndex) && (mTri1 != skInvalidTriIndex);
+            return (mTri0 != skInvalidIndex) && (mTri1 != skInvalidIndex);
+        }
+
+        void ReplaceTri(uint32_t const oldIdx, uint32_t const newIdx)
+        {
+            if (mTri0 == oldIdx)
+            {
+                mTri0 = newIdx;
+            }
+
+            if (mTri1 == oldIdx)
+            {
+                mTri1 = newIdx;
+            }
         }
 
         uint32_t OtherTriangle(uint32_t const triIdx) const
@@ -168,7 +197,34 @@ namespace NDelaunay
         uint32_t mTri1;
     };
 
-    typedef std::map<SEdge, STriPair> TEdgeMap;
+    typedef std::map<SEdge, STriPair> TEdgeTriMap;
+    typedef std::map<SEdge, bool>     TEdgeMarkedMap;
+
+    class CTriEdges
+    {
+    public:
+        explicit CTriEdges(uint32_t const *pTriangleIndices)            
+        {
+            mEdges[0] = SEdge(pTriangleIndices[0], pTriangleIndices[1]);
+            mEdges[1] = SEdge(pTriangleIndices[1], pTriangleIndices[2]);
+            mEdges[2] = SEdge(pTriangleIndices[2], pTriangleIndices[0]);
+        }
+
+        bool HasEdge(SEdge const &e) const
+        {
+            for (SEdge const &ourEdge : mEdges)
+            {
+                if (e == ourEdge)
+                {
+                    return true;
+                }   
+            }
+
+            return false;
+        }
+
+        SEdge mEdges[3];
+    };
 
     uint32_t get_index_not_on_edge(uint32_t const * const pTriIndices, SEdge const &edge)
     {
@@ -181,7 +237,7 @@ namespace NDelaunay
         }
 
         assert(false && "failed to find unique index");
-        return skInvalidTriIndex;
+        return skInvalidIndex;
     }
 
     class CPositionAccess
@@ -212,7 +268,7 @@ namespace NDelaunay
         return circle_winding_det(*pPos0, *pPos1, *pPos2) >= 0;
     }
 
-    bool doit(uint32_t *pTriIndices, uint32_t const indexCount, void const * pPositions, uint32_t const positionStride)
+    bool retriangulate(uint32_t *pTriIndices, uint32_t const indexCount, void const * pPositions, uint32_t const positionStride)
     {
         assert((indexCount % 3) == 0 && "invalid index count");
         CPositionAccess positions(pPositions, positionStride);
@@ -226,7 +282,9 @@ namespace NDelaunay
             }
         }
 
-        TEdgeMap edgeMap;
+        TEdgeTriMap edgeTriMap;
+        TEdgeMarkedMap edgeMarkedMap;
+
         for (uint32_t idx = 0; idx < indexCount; idx += 3)
         {
             uint32_t const i0 = pTriIndices[idx+0];
@@ -238,17 +296,17 @@ namespace NDelaunay
             SEdge const e2(i2, i0);
 
             uint32_t const triIdx = idx/3;
-            edgeMap[e0].Accumulate(triIdx);
-            edgeMap[e1].Accumulate(triIdx);
-            edgeMap[e2].Accumulate(triIdx);
+            edgeTriMap[e0].Accumulate(triIdx);
+            edgeTriMap[e1].Accumulate(triIdx);
+            edgeTriMap[e2].Accumulate(triIdx);
         }
 
         // remove any edge mappings that don't have paired triangles
-        for (auto itr = edgeMap.begin(); itr != edgeMap.end(); /*in loop*/)
+        for (auto itr = edgeTriMap.begin(); itr != edgeTriMap.end(); /*in loop*/)
         {
             if (!itr->second.HasPairedTriangles())
             {
-                itr = edgeMap.erase(itr);
+                itr = edgeTriMap.erase(itr);
             }
             else
             {
@@ -256,32 +314,32 @@ namespace NDelaunay
             }
         }
 
-        std::vector<SEdgeMeta> edges;
-        edges.reserve(edgeMap.size());
-        for (auto itr = edgeMap.begin(); itr != edgeMap.end(); ++itr)
+        // build marked map to know what still needs to be processed
+        for (auto itr = edgeTriMap.begin(); itr != edgeTriMap.end(); ++itr)
         {
-            edges.push_back(SEdgeMeta(itr->first, true /*marked*/));
+            edgeMarkedMap[itr->first] = false;
         }
 
-        std::vector<uint32_t> edgesToProcess;
-        edgesToProcess.reserve(edges.size());
-        for (uint32_t i = 0; i < edges.size(); ++i)
+        typedef std::vector<SEdge const*> TEdgeProcessVec;
+        TEdgeProcessVec edgesToProcess;
+        edgesToProcess.reserve(edgeTriMap.size());
+        for (auto itr = edgeTriMap.begin(); itr != edgeTriMap.end(); ++itr)
         {
-            edgesToProcess.push_back(i);
+            edgesToProcess.push_back(&itr->first);
         }
 
         while (!edgesToProcess.empty())
         {
-            SEdgeMeta *pMeta = &edges[edgesToProcess.back()];
+            SEdge const *pEdge = edgesToProcess.back();
             edgesToProcess.pop_back();
 
             // check if this edge is local Delaunay
-            SEdge const &e = pMeta->mEdge;
+            SEdge const &e = *pEdge;
             
-            auto const edgeMapItr = edgeMap.find(e);
-            assert((edgeMapItr != edgeMap.end()) && "invalid edge");
+            auto const edgeMapItr = edgeTriMap.find(e);
+            assert((edgeMapItr != edgeTriMap.end()) && "invalid edge");
             STriPair const &triPair = edgeMapItr->second;
-            assert(((triPair.mTri0 != skInvalidTriIndex) && (triPair.mTri1 != skInvalidTriIndex)) && "invalid tri pair");
+            assert(((triPair.mTri0 != skInvalidIndex) && (triPair.mTri1 != skInvalidIndex)) && "invalid tri pair");
             
             uint32_t * pTriIndices0 = pTriIndices + triPair.mTri0 * 3;
             uint32_t * pTriIndices1 = pTriIndices + triPair.mTri1 * 3;
@@ -299,6 +357,9 @@ namespace NDelaunay
             {
                 // flip the triangle
 
+                CTriEdges const priorTriangle0(pTriIndices0);
+                CTriEdges const priorTriangle1(pTriIndices1);
+
                 uint32_t newTri0 [] = {freeIndex0, freeIndex1, e.mV0};
                 if (!has_correct_winding(newTri0, positions))
                 {
@@ -311,21 +372,60 @@ namespace NDelaunay
                     std::swap(newTri1[1], newTri1[2]);
                 }
 
+                // add the flipped edge to the map
+                SEdge const flippedEdge(freeIndex0, freeIndex1);
+                {   
+                    edgeTriMap[flippedEdge].Accumulate(triPair.mTri0);
+                    edgeTriMap[flippedEdge].Accumulate(triPair.mTri1);
+                    edgeMarkedMap[flippedEdge] = true;
+                }
+
+                CTriEdges const newTriangle0(newTri0);
+                CTriEdges const newTriangle1(newTri1);
+
+                auto const update_edges = [](TEdgeTriMap &edgeTriMap, TEdgeMarkedMap &edgeMarkedMap, TEdgeProcessVec &edgesToProcess, SEdge const &edge, SEdge const &flippedEdge, uint32_t const priorTriIdx, uint32_t const newTriIdx)
+                {
+                    if (edge != flippedEdge)
+                    {
+                        auto const edgeMapItr = edgeTriMap.find(edge);
+                        if (edgeMapItr != edgeTriMap.end())
+                        {
+                            STriPair &triPair = edgeMapItr->second;
+                            triPair.ReplaceTri(priorTriIdx, newTriIdx);
+
+                            auto markItr = edgeMarkedMap.find(edgeMapItr->first);
+                            assert((markItr != edgeMarkedMap.end()) && "invalid edge mark itr");
+
+                            if (!markItr->second)
+                            {
+                                markItr->second = true;
+                                edgesToProcess.push_back(&edgeMapItr->first);
+                            }
+                        }
+                    }
+                };
+
+                for (SEdge const &edge : newTriangle0.mEdges)
+                {
+                    if (!priorTriangle0.HasEdge(edge))
+                    {
+                        update_edges(edgeTriMap, edgeMarkedMap, edgesToProcess, edge, flippedEdge, triPair.mTri1 /*prior*/, triPair.mTri0 /*new*/);
+                    }
+                }
+
+                for (SEdge const &edge : newTriangle1.mEdges)
+                {
+                    if (!priorTriangle1.HasEdge(edge))
+                    {
+                        update_edges(edgeTriMap, edgeMarkedMap, edgesToProcess, edge, flippedEdge, triPair.mTri0 /*prior*/, triPair.mTri1 /*new*/);
+                    }
+                }
+
+                // convert the triangle indices to the new indices
                 memcpy(pTriIndices0, newTri0, sizeof(uint32_t) * 3);
                 memcpy(pTriIndices1, newTri1, sizeof(uint32_t) * 3);
 
-                // THIS PROBABLY WILL BREAK ALL THE OTHER NEIGHBOR TRIANGLES!!!!!
-
-                /*edgeMap[SEdge(newTri
-
-
-                SEdge const newTri0_edge0(freeIndex0, e.mV1);
-                SEdge const newTri0_edge1(e.mV0, e.mV0);
-                SEdge const newTri0_edge2(freeIndex0, e.mV0);*/
-
-
-                
-
+                edgeMarkedMap[*pEdge] = true;
             }
         }
 

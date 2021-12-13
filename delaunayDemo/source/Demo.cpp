@@ -451,12 +451,12 @@ namespace NDemo
             inStream >> v.mColor.mR >> v.mColor.mG >> v.mColor.mB >> v.mColor.mA;
         }
 
-
+        // enable this code to perform a Delauney Retriangulation on the mesh
 #if 1
-        NDelaunay::doit(sData.mMesh.mIndices.data(),
-                        uint32_t(sData.mMesh.mIndices.size()),
-                        sData.mMesh.mVertices.data(),
-                        uint32_t(sizeof(SPositionColorVertex)));
+        NDelaunay::retriangulate(sData.mMesh.mIndices.data(),
+                                 uint32_t(sData.mMesh.mIndices.size()),
+                                 sData.mMesh.mVertices.data(),
+                                 uint32_t(sizeof(SPositionColorVertex)));
 #endif
 
         if (!sData.mMesh.mVertices.empty())
