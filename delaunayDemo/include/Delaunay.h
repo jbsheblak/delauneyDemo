@@ -8,9 +8,11 @@
 
 namespace NDelaunay
 {
-    struct SFloat2 { float x, y; };
-
-    bool is_in_circle(SFloat2 const &a, SFloat2 const &b, SFloat2 const &c, SFloat2 const &q);
-
-    bool retriangulate(uint32_t *pTriIndices, uint32_t const indexCount, void const * pPositions, uint32_t const positionStride);
+    /// Perform a Delaunay triangularization on the specified input mesh.
+    /// @param[in] pTriIndices An array of triangle indices that are 'indexCount' long.
+    /// @param[in] indexCount The number of indices in pTriIndices to examine.
+    /// @param[in] pPositions A non-null array of float2 positions.
+    /// @param[in] positionStride A byte stride from one float2 instance to the start of another.
+    /// @return true if the triangularization was successful, false otherwise.
+    bool retriangulate(uint32_t * const pTriIndices, uint32_t const indexCount, void const * const pPositions, uint32_t const positionStride);
 }

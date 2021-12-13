@@ -148,18 +148,58 @@ namespace NDemo
             return pConstantBuffer;
         }
 
-        // --------------------------------------------------------------
-
+        // ==============================================================
+        // SMeshData
+        // ==============================================================
+        
         struct SMeshData
         {
             std::vector<SPositionColorVertex>           mVertices;
             std::vector<uint32_t>                       mIndices;
+            std::vector<uint32_t>                       mTriangulatedIndices;
 
             TD3D11BufferPtr                             mpVertexBuffer;
             TD3D11BufferPtr                             mpIndexBuffer;
         };
 
         // --------------------------------------------------------------
+
+        void rebuild_index_buffer_from(SMeshData &mesh, std::vector<uint32_t> const &indices)
+        {
+            if (indices.empty())
+            {
+                mesh.mpIndexBuffer.Reset();
+            }
+            else
+            {
+                mesh.mpIndexBuffer = build_index_buffer(indices.data(), UINT32(indices.size()));
+            }
+        }
+
+        // --------------------------------------------------------------
+
+        void retriangulate(SMeshData &mesh)
+        {
+            mesh.mTriangulatedIndices = mesh.mIndices;
+            
+            // round the indices down to a multiple of 3
+            uint32_t const indexCount = uint32_t(mesh.mTriangulatedIndices.size());
+            uint32_t const indicesToTriangulate = (indexCount/3)*3;
+
+        #if 1
+            if (indicesToTriangulate > 0)
+            {
+                NDelaunay::retriangulate(mesh.mTriangulatedIndices.data(),
+                                         indicesToTriangulate,
+                                         mesh.mVertices.data(),
+                                         uint32_t(sizeof(SPositionColorVertex)));
+            }
+        #endif
+        }
+
+        // ==============================================================
+        // SDemoData
+        // ==============================================================
 
         struct SDemoData
         {
@@ -277,23 +317,27 @@ namespace NDemo
             gpDeviceCtx->PSSetConstantBuffers(0 /*startSlot*/, 1 /*numBuffers*/, sData.mpConstantBuffer.GetAddressOf());
             gpDeviceCtx->PSSetShader(sData.mShader.mpPSShader.Get(), nullptr, 0);
 
+            assert((sData.mMesh.mIndices.size() == sData.mMesh.mTriangulatedIndices.size()) && "invalid index count");
             uint32_t const vertCount = uint32_t(sData.mMesh.mIndices.size());
             uint32_t const triCount = vertCount/3;
             uint32_t const remCount = vertCount%3;
 
+            // render any full triangles
             if (triCount > 0)
             {
                 gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-                gpDeviceCtx->DrawIndexed(triCount * 3, 0 /*startIndexLocation*/, 0 /*baseVertexLocation*/);
+                gpDeviceCtx->DrawIndexed(triCount*3, 0 /*startIndexLocation*/, 0 /*baseVertexLocation*/);
             }
 
-            if (remCount > 0)
+            // render the remaining wireframe
+            if (remCount >= 2)
             {
                 gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
                 gpDeviceCtx->DrawIndexed(remCount, triCount*3, 0 /*baseVertexLocation*/);
             }
 
-            if (vertCount > 0)
+            // render all the points
+            if (vertCount >= 1)
             {
                 gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
                 gpDeviceCtx->DrawIndexed(vertCount, 0, 0 /*baseVertexLocation*/);
@@ -307,13 +351,6 @@ namespace NDemo
 
     void add_mouse_click(int32_t const mouseX, int32_t const mouseY)
     {
-        /*static float const skColors [] =
-        {
-            1.0f, 0.0f, 0.0f, 1.0f,
-            0.0f, 1.0f, 0.0f, 1.0f,
-            0.0f, 0.0f, 1.0f, 1.0f,
-        };*/
-
         static float const skColors [] =
         {
             0.5f, 0.5f, 0.5f, 1.0f,
@@ -355,7 +392,9 @@ namespace NDemo
         }
 
         sData.mMesh.mIndices.push_back(index);
-        sData.mMesh.mpIndexBuffer = build_index_buffer(sData.mMesh.mIndices.data(), uint32_t(sData.mMesh.mIndices.size()));
+
+        retriangulate(sData.mMesh);
+        rebuild_index_buffer_from(sData.mMesh, sData.mMesh.mTriangulatedIndices);
     }
 
     // --------------------------------------------------------------
@@ -369,25 +408,20 @@ namespace NDemo
 
     void remove_last_triangle()
     {
-        if (sData.mMesh.mIndices.size() >= 3)
+        // undo last primitive if possible
+        if (!sData.mMesh.mIndices.empty())
         {
             sData.mMesh.mIndices.pop_back();
-            sData.mMesh.mIndices.pop_back();
-            sData.mMesh.mIndices.pop_back();
         }
+        // otherwise, clear the data fully
         else
         {
             sData.mMesh.mIndices.clear();
+            sData.mMesh.mVertices.clear();
         }
 
-        if (sData.mMesh.mIndices.empty())
-        {
-            sData.mMesh.mpIndexBuffer.Reset();
-        }
-        else
-        {
-            sData.mMesh.mpIndexBuffer = build_index_buffer(sData.mMesh.mIndices.data(), uint32_t(sData.mMesh.mIndices.size()));
-        }
+        retriangulate(sData.mMesh);
+        rebuild_index_buffer_from(sData.mMesh, sData.mMesh.mTriangulatedIndices);
     }
 
     // --------------------------------------------------------------
@@ -451,13 +485,7 @@ namespace NDemo
             inStream >> v.mColor.mR >> v.mColor.mG >> v.mColor.mB >> v.mColor.mA;
         }
 
-        // enable this code to perform a Delauney Retriangulation on the mesh
-#if 1
-        NDelaunay::retriangulate(sData.mMesh.mIndices.data(),
-                                 uint32_t(sData.mMesh.mIndices.size()),
-                                 sData.mMesh.mVertices.data(),
-                                 uint32_t(sizeof(SPositionColorVertex)));
-#endif
+        retriangulate(sData.mMesh);
 
         if (!sData.mMesh.mVertices.empty())
         {
@@ -466,7 +494,7 @@ namespace NDemo
 
         if (!sData.mMesh.mIndices.empty())
         {
-            sData.mMesh.mpIndexBuffer = build_index_buffer(sData.mMesh.mIndices.data(), uint32_t(sData.mMesh.mIndices.size()));
+            rebuild_index_buffer_from(sData.mMesh, sData.mMesh.mTriangulatedIndices);
         }
     }
 

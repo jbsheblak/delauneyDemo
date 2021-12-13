@@ -14,6 +14,10 @@ namespace NDelaunay
 {
     // --------------------------------------------------------------
 
+    struct SFloat2 { float x, y; };
+
+    // --------------------------------------------------------------
+
     struct SFloat3
     {
         explicit SFloat3() = default;
@@ -22,7 +26,7 @@ namespace NDelaunay
     };
 
     // --------------------------------------------------------------
-
+    // 3x3 matrix determinant
     float det3(SFloat3 const &a, SFloat3 const &b, SFloat3 const &c)
     {
         //     | a.x      a.y     a.z   |
@@ -83,7 +87,7 @@ namespace NDelaunay
     }
 
     // --------------------------------------------------------------
-
+    // check to see if 'q' is in the circle whose perimeter that touches (a,b,c)
     bool is_in_circle(SFloat2 const &a, SFloat2 const &b, SFloat2 const &c, SFloat2 const &q)
     {
         float const detWinding = circle_winding_det(a,b,c);
@@ -93,8 +97,15 @@ namespace NDelaunay
         return (detWinding * detQuery) < 0;
     }
 
+    // --------------------------------------------------------------
+
     static constexpr uint32_t const skInvalidIndex = ~0u;
 
+    // ==============================================================
+    // SEdge
+    // ==============================================================
+    // represents a single edge in our triangle mesh.
+    // always stored such that lower index is in v0 and higher index is in v1
     struct SEdge
     {
         explicit SEdge()
@@ -129,21 +140,14 @@ namespace NDelaunay
             return !(*this == other);
         }
 
-        uint32_t mV0;
-        uint32_t mV1;
+        uint32_t mV0;   ///< index of first vertex
+        uint32_t mV1;   ///< index of second vertex
     };
 
-    struct SEdgeMeta
-    {
-        explicit SEdgeMeta(SEdge const &e, bool const marked)
-            : mEdge(e)
-            , mMarked(marked)
-        {
-        }
-
-        SEdge   mEdge;
-        bool    mMarked;
-    };
+    // ==============================================================
+    // STriPair
+    // ==============================================================
+    // a pair of triangles that share an edge
 
     struct STriPair
     {
@@ -153,6 +157,7 @@ namespace NDelaunay
         {
         }
 
+        // add the triangle to the pairing
         void Accumulate(uint32_t const tri)
         {
             if (mTri0 == skInvalidIndex)
@@ -169,11 +174,13 @@ namespace NDelaunay
             }
         }
 
+        // check if we have two paired triangles
         bool HasPairedTriangles() const
         {
             return (mTri0 != skInvalidIndex) && (mTri1 != skInvalidIndex);
         }
 
+        // if our tri matches the oldIdx, replace it with the newIdx
         void ReplaceTri(uint32_t const oldIdx, uint32_t const newIdx)
         {
             if (mTri0 == oldIdx)
@@ -187,18 +194,17 @@ namespace NDelaunay
             }
         }
 
-        uint32_t OtherTriangle(uint32_t const triIdx) const
-        {
-            assert(((triIdx == mTri0) || (triIdx == mTri1)) && "doesn't match either tri");
-            return (mTri0 == triIdx) ? mTri1 : mTri0;
-        }
-
-        uint32_t mTri0;
-        uint32_t mTri1;
+        uint32_t mTri0; ///< index of the first triangle
+        uint32_t mTri1; ///< index of the second triangle
     };
 
     typedef std::map<SEdge, STriPair> TEdgeTriMap;
     typedef std::map<SEdge, bool>     TEdgeMarkedMap;
+
+    // ==============================================================
+    // CTriEdges
+    // ==============================================================
+    // a set of edges formed from a triangle
 
     class CTriEdges
     {
@@ -226,6 +232,8 @@ namespace NDelaunay
         SEdge mEdges[3];
     };
 
+    // --------------------------------------------------------------
+    // get the index of the triangle that is NOT included in the edge
     uint32_t get_index_not_on_edge(uint32_t const * const pTriIndices, SEdge const &edge)
     {
         for (int i = 0; i < 3; ++i)
@@ -240,6 +248,11 @@ namespace NDelaunay
         return skInvalidIndex;
     }
 
+    // ==============================================================
+    // CPositionAccess
+    // ==============================================================
+    // utility class for accessing positions from indices
+
     class CPositionAccess
     {
     public:
@@ -251,7 +264,7 @@ namespace NDelaunay
 
         SFloat2 const * Get(uint32_t const idx) const
         {
-            return reinterpret_cast<SFloat2 const*>(mpPositions8 + idx * mPositionStride);
+            return reinterpret_cast<SFloat2 const*>(mpPositions8 + intptr_t(idx * mPositionStride));
         }
 
     private:
@@ -259,6 +272,8 @@ namespace NDelaunay
         uint32_t        mPositionStride;
     };
 
+    // --------------------------------------------------------------
+    // check to see if the specified triangle has the proper winding
     bool has_correct_winding(uint32_t const *pTriIndices, CPositionAccess const &positions)
     {
         SFloat2 const * const pPos0 = positions.Get(pTriIndices[0]);
@@ -268,8 +283,12 @@ namespace NDelaunay
         return circle_winding_det(*pPos0, *pPos1, *pPos2) >= 0;
     }
 
-    bool retriangulate(uint32_t *pTriIndices, uint32_t const indexCount, void const * pPositions, uint32_t const positionStride)
+    // --------------------------------------------------------------
+
+    bool retriangulate(uint32_t * const pTriIndices, uint32_t const indexCount, void const * const pPositions, uint32_t const positionStride)
     {
+        assert(((pTriIndices != nullptr) || (indexCount == 0)) && "invalid tri indices");
+        assert(((pPositions != nullptr) && (positionStride > 0)) && "invalid position and stride");
         assert((indexCount % 3) == 0 && "invalid index count");
         CPositionAccess positions(pPositions, positionStride);
 
@@ -314,35 +333,32 @@ namespace NDelaunay
             }
         }
 
-        // build marked map to know what still needs to be processed
-        for (auto itr = edgeTriMap.begin(); itr != edgeTriMap.end(); ++itr)
-        {
-            edgeMarkedMap[itr->first] = false;
-        }
-
+        // push all of the known edges into the 'to-process' vec and mark them
         typedef std::vector<SEdge const*> TEdgeProcessVec;
         TEdgeProcessVec edgesToProcess;
         edgesToProcess.reserve(edgeTriMap.size());
         for (auto itr = edgeTriMap.begin(); itr != edgeTriMap.end(); ++itr)
         {
             edgesToProcess.push_back(&itr->first);
+            edgeMarkedMap[itr->first] = true;
         }
 
+        // process edges until we hit them all
         while (!edgesToProcess.empty())
         {
-            SEdge const *pEdge = edgesToProcess.back();
+            // pop edge from stack and unmark
+            SEdge const &e = *edgesToProcess.back();
             edgesToProcess.pop_back();
+            edgeMarkedMap[e] = false;
 
             // check if this edge is local Delaunay
-            SEdge const &e = *pEdge;
-            
             auto const edgeMapItr = edgeTriMap.find(e);
             assert((edgeMapItr != edgeTriMap.end()) && "invalid edge");
             STriPair const &triPair = edgeMapItr->second;
             assert(((triPair.mTri0 != skInvalidIndex) && (triPair.mTri1 != skInvalidIndex)) && "invalid tri pair");
             
-            uint32_t * pTriIndices0 = pTriIndices + triPair.mTri0 * 3;
-            uint32_t * pTriIndices1 = pTriIndices + triPair.mTri1 * 3;
+            uint32_t * const pTriIndices0 = pTriIndices + intptr_t(triPair.mTri0) * 3;
+            uint32_t * const pTriIndices1 = pTriIndices + intptr_t(triPair.mTri1) * 3;
 
             uint32_t const freeIndex0 = get_index_not_on_edge(pTriIndices0, e);
             uint32_t const freeIndex1 = get_index_not_on_edge(pTriIndices1, e);
@@ -352,8 +368,7 @@ namespace NDelaunay
             SFloat2 const * const pEdge0Pos = positions.Get(e.mV0);
             SFloat2 const * const pEdge1Pos = positions.Get(e.mV1);
 
-            bool const isFree1PosInCircle = is_in_circle(*pFree0Pos, *pEdge0Pos, *pEdge1Pos, *pFree1Pos);
-            if (isFree1PosInCircle)
+            if (is_in_circle(*pFree0Pos, *pEdge0Pos, *pEdge1Pos, *pFree1Pos))
             {
                 // flip the triangle
 
@@ -383,49 +398,59 @@ namespace NDelaunay
                 CTriEdges const newTriangle0(newTri0);
                 CTriEdges const newTriangle1(newTri1);
 
-                auto const update_edges = [](TEdgeTriMap &edgeTriMap, TEdgeMarkedMap &edgeMarkedMap, TEdgeProcessVec &edgesToProcess, SEdge const &edge, SEdge const &flippedEdge, uint32_t const priorTriIdx, uint32_t const newTriIdx)
+                // our flipped edge will cause new edge associations.
+                // update the edge mappings and which edges to process
                 {
-                    if (edge != flippedEdge)
+                    auto const update_edges = [](TEdgeTriMap &edgeTriMap, TEdgeMarkedMap &edgeMarkedMap, TEdgeProcessVec &edgesToProcess, SEdge const &edge, uint32_t const priorTriIdx, uint32_t const newTriIdx)
                     {
+                        // look for the edge in the edge tri map
+                        // if it doesn't exist, that means it was a border edge and we don't have to worry about it
                         auto const edgeMapItr = edgeTriMap.find(edge);
                         if (edgeMapItr != edgeTriMap.end())
                         {
+                            // replace the old triIdx with the new triIdx
                             STriPair &triPair = edgeMapItr->second;
                             triPair.ReplaceTri(priorTriIdx, newTriIdx);
 
+                            // if this edge hasn't already been marked, do that now and add to process list
                             auto markItr = edgeMarkedMap.find(edgeMapItr->first);
                             assert((markItr != edgeMarkedMap.end()) && "invalid edge mark itr");
 
+                            // if unmarked, push onto sack and mark it
                             if (!markItr->second)
                             {
-                                markItr->second = true;
                                 edgesToProcess.push_back(&edgeMapItr->first);
+                                markItr->second = true;
+                            }
+                        }
+                    };
+
+                    for (SEdge const &edge : newTriangle0.mEdges)
+                    {
+                        if (!priorTriangle0.HasEdge(edge))
+                        {
+                            if (edge != flippedEdge)
+                            {
+                                update_edges(edgeTriMap, edgeMarkedMap, edgesToProcess, edge, triPair.mTri1 /*prior*/, triPair.mTri0 /*new*/);
                             }
                         }
                     }
-                };
 
-                for (SEdge const &edge : newTriangle0.mEdges)
-                {
-                    if (!priorTriangle0.HasEdge(edge))
+                    for (SEdge const &edge : newTriangle1.mEdges)
                     {
-                        update_edges(edgeTriMap, edgeMarkedMap, edgesToProcess, edge, flippedEdge, triPair.mTri1 /*prior*/, triPair.mTri0 /*new*/);
-                    }
-                }
-
-                for (SEdge const &edge : newTriangle1.mEdges)
-                {
-                    if (!priorTriangle1.HasEdge(edge))
-                    {
-                        update_edges(edgeTriMap, edgeMarkedMap, edgesToProcess, edge, flippedEdge, triPair.mTri0 /*prior*/, triPair.mTri1 /*new*/);
+                        if (!priorTriangle1.HasEdge(edge))
+                        {
+                            if (edge != flippedEdge)
+                            {
+                                update_edges(edgeTriMap, edgeMarkedMap, edgesToProcess, edge, triPair.mTri0 /*prior*/, triPair.mTri1 /*new*/);
+                            }
+                        }
                     }
                 }
 
                 // convert the triangle indices to the new indices
                 memcpy(pTriIndices0, newTri0, sizeof(uint32_t) * 3);
                 memcpy(pTriIndices1, newTri1, sizeof(uint32_t) * 3);
-
-                edgeMarkedMap[*pEdge] = true;
             }
         }
 
