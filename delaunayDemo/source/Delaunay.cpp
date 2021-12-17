@@ -264,7 +264,7 @@ namespace NDelaunay
 
         SFloat2 const * Get(uint32_t const idx) const
         {
-            return reinterpret_cast<SFloat2 const*>(mpPositions8 + intptr_t(idx * mPositionStride));
+            return reinterpret_cast<SFloat2 const*>(mpPositions8 + intptr_t(idx) * mPositionStride);
         }
 
     private:
@@ -285,7 +285,7 @@ namespace NDelaunay
 
     // --------------------------------------------------------------
 
-    bool retriangulate(uint32_t * const pTriIndices, uint32_t const indexCount, void const * const pPositions, uint32_t const positionStride)
+    bool retriangulate_with_edge_flip(uint32_t * const pTriIndices, uint32_t const indexCount, void const * const pPositions, uint32_t const positionStride)
     {
         assert(((pTriIndices != nullptr) || (indexCount == 0)) && "invalid tri indices");
         assert(((pPositions != nullptr) && (positionStride > 0)) && "invalid position and stride");
@@ -304,6 +304,7 @@ namespace NDelaunay
         TEdgeTriMap edgeTriMap;
         TEdgeMarkedMap edgeMarkedMap;
 
+        // build up the edge triangle mappings
         for (uint32_t idx = 0; idx < indexCount; idx += 3)
         {
             uint32_t const i0 = pTriIndices[idx+0];
@@ -320,7 +321,8 @@ namespace NDelaunay
             edgeTriMap[e2].Accumulate(triIdx);
         }
 
-        // remove any edge mappings that don't have paired triangles
+        // remove any edge mappings that don't have paired triangles.
+        // these are border edges and we don't need them.
         for (auto itr = edgeTriMap.begin(); itr != edgeTriMap.end(); /*in loop*/)
         {
             if (!itr->second.HasPairedTriangles())
@@ -333,7 +335,7 @@ namespace NDelaunay
             }
         }
 
-        // push all of the known edges into the 'to-process' vec and mark them
+        // push all of the known edges into the 'to-process' bin and mark them
         typedef std::vector<SEdge const*> TEdgeProcessVec;
         TEdgeProcessVec edgesToProcess;
         edgesToProcess.reserve(edgeTriMap.size());
@@ -387,7 +389,7 @@ namespace NDelaunay
                     std::swap(newTri1[1], newTri1[2]);
                 }
 
-                // add the flipped edge to the map
+                // add the flipped edge to the triangle map
                 SEdge const flippedEdge(freeIndex0, freeIndex1);
                 {   
                     edgeTriMap[flippedEdge].Accumulate(triPair.mTri0);
@@ -401,7 +403,12 @@ namespace NDelaunay
                 // our flipped edge will cause new edge associations.
                 // update the edge mappings and which edges to process
                 {
-                    auto const update_edges = [](TEdgeTriMap &edgeTriMap, TEdgeMarkedMap &edgeMarkedMap, TEdgeProcessVec &edgesToProcess, SEdge const &edge, uint32_t const priorTriIdx, uint32_t const newTriIdx)
+                    auto const update_edges = [](TEdgeTriMap &edgeTriMap,
+                                                 TEdgeMarkedMap &edgeMarkedMap,
+                                                 TEdgeProcessVec &edgesToProcess,
+                                                 SEdge const &edge,
+                                                 uint32_t const priorTriIdx,
+                                                 uint32_t const newTriIdx)
                     {
                         // look for the edge in the edge tri map
                         // if it doesn't exist, that means it was a border edge and we don't have to worry about it

@@ -189,7 +189,7 @@ namespace NDemo
         #if 1
             if (indicesToTriangulate > 0)
             {
-                NDelaunay::retriangulate(mesh.mTriangulatedIndices.data(),
+                NDelaunay::retriangulate_with_edge_flip(mesh.mTriangulatedIndices.data(),
                                          indicesToTriangulate,
                                          mesh.mVertices.data(),
                                          uint32_t(sizeof(SPositionColorVertex)));

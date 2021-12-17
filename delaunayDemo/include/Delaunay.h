@@ -14,5 +14,5 @@ namespace NDelaunay
     /// @param[in] pPositions A non-null array of float2 positions.
     /// @param[in] positionStride A byte stride from one float2 instance to the start of another.
     /// @return true if the triangularization was successful, false otherwise.
-    bool retriangulate(uint32_t * const pTriIndices, uint32_t const indexCount, void const * const pPositions, uint32_t const positionStride);
+    bool retriangulate_with_edge_flip(uint32_t * const pTriIndices, uint32_t const indexCount, void const * const pPositions, uint32_t const positionStride);
 }
