@@ -11,15 +11,26 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\external\imgui-1.85\backends\imgui_impl_dx11.cpp" />
+    <ClCompile Include="..\external\imgui-1.85\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="..\external\imgui-1.85\imgui.cpp" />
+    <ClCompile Include="..\external\imgui-1.85\imgui_demo.cpp" />
+    <ClCompile Include="..\external\imgui-1.85\imgui_draw.cpp" />
+    <ClCompile Include="..\external\imgui-1.85\imgui_tables.cpp" />
+    <ClCompile Include="..\external\imgui-1.85\imgui_widgets.cpp" />
+    <ClCompile Include="..\external\imgui-1.85\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="source\D3D11Renderer.cpp" />
     <ClCompile Include="source\Delaunay.cpp" />
     <ClCompile Include="source\Demo.cpp" />
+    <ClCompile Include="source\imguiwrapper.cpp" />
     <ClCompile Include="source\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\external\imgui-1.85\backends\imgui_impl_dx11.h" />
     <ClInclude Include="include\D3D11Renderer.h" />
     <ClInclude Include="include\Delaunay.h" />
     <ClInclude Include="include\Demo.h" />
+    <ClInclude Include="include\imguiwrapper.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

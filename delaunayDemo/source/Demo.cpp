@@ -8,6 +8,7 @@
 #include <optional>
 #include <DirectXMath.h>
 #include "Delaunay.h"
+#include "imguiwrapper.h"
 
 // =================================================================
 // NDemo
@@ -272,6 +273,8 @@ namespace NDemo
 
     void render()
     {
+        imguiwrapper::new_frame();
+
         // setup data
         {
             D3D11_MAPPED_SUBRESOURCE mapping;
@@ -342,9 +345,15 @@ namespace NDemo
                 gpDeviceCtx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
                 gpDeviceCtx->DrawIndexed(vertCount, 0, 0 /*baseVertexLocation*/);
             }
-
-            gpSwapChain->Present(1, 0);
         }
+
+        ImGui::Begin("Hello World");
+        ImGui::Text("Hello, world %d", 123);
+        ImGui::End();
+
+        imguiwrapper::render();
+
+        gpSwapChain->Present(1, 0);
     }
 
     // --------------------------------------------------------------

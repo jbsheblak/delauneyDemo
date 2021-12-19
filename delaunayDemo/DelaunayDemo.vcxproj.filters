@@ -7,6 +7,9 @@
     <Filter Include="source">
       <UniqueIdentifier>{b4377235-0074-4381-9f91-d1b1ce5b98db}</UniqueIdentifier>
     </Filter>
+    <Filter Include="source\imgui">
+      <UniqueIdentifier>{73dd6d24-b06b-465e-ad85-4144a7e57009}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -21,6 +24,33 @@
     <ClCompile Include="source\Delaunay.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="..\external\imgui-1.85\backends\imgui_impl_dx11.cpp">
+      <Filter>source\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\imgui-1.85\backends\imgui_impl_win32.cpp">
+      <Filter>source\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\imgui-1.85\misc\cpp\imgui_stdlib.cpp">
+      <Filter>source\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\imgui-1.85\imgui.cpp">
+      <Filter>source\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\imgui-1.85\imgui_demo.cpp">
+      <Filter>source\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\imgui-1.85\imgui_draw.cpp">
+      <Filter>source\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\imgui-1.85\imgui_tables.cpp">
+      <Filter>source\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\imgui-1.85\imgui_widgets.cpp">
+      <Filter>source\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\imguiwrapper.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\D3D11Renderer.h">
@@ -30,6 +60,12 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\Delaunay.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\imgui-1.85\backends\imgui_impl_dx11.h">
+      <Filter>source\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\imguiwrapper.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

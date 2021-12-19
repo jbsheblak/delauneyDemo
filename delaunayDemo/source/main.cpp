@@ -11,12 +11,14 @@
 #include <tchar.h>
 #include "D3D11Renderer.h"
 #include "Demo.h"
+#include "imguiwrapper.h"
 
 // --------------------------------------------------------------
 
 // Global Variables:
 HINSTANCE gInstance;                                // current instance
 HWND gWindow;
+bool gImguiInit = false;
 
 // --------------------------------------------------------------
 
@@ -48,11 +50,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-    if (!NRenderer::initialize(gWindow) || !NDemo::initialize())
+    if (!NRenderer::initialize(gWindow) ||
+        !imguiwrapper::initialize(gWindow) ||
+        !NDemo::initialize())
     {
         return 0;
     }
 
+    gImguiInit = true;
     NDemo::read_data();
 
     // Main message loop:
@@ -68,6 +73,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     NDemo::save_data();
     NDemo::shutdown();
+    imguiwrapper::shutdown();
     NRenderer::shutdown();
 
     return (int) msg.wParam;
@@ -122,6 +128,8 @@ BOOL init_instance(HINSTANCE hInstance, int nCmdShow)
 
 LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
+    
     switch (message)
     {
     case WM_COMMAND:
@@ -139,15 +147,21 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_LBUTTONUP:
         {
-            int xPos = GET_X_LPARAM(lParam); 
-            int yPos = GET_Y_LPARAM(lParam);
-            NDemo::add_mouse_click(xPos, yPos);
+            if (gImguiInit && !ImGui::GetIO().WantCaptureMouse)
+            {
+                int xPos = GET_X_LPARAM(lParam); 
+                int yPos = GET_Y_LPARAM(lParam);
+                NDemo::add_mouse_click(xPos, yPos);
+            }
         }
         break;
 
     case WM_RBUTTONUP:
         {
-            NDemo::remove_last_triangle();
+            if (gImguiInit && !ImGui::GetIO().WantCaptureMouse)
+            {
+                NDemo::remove_last_triangle();
+            }
         }
         break;
 
