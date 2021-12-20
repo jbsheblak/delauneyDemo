@@ -166,6 +166,7 @@ namespace NDelaunay
             }
             else if (mTri1 == skInvalidIndex)
             {
+                assert((tri != mTri0) && "duplicate triangle");
                 mTri1 = tri;
             }
             else

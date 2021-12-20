@@ -209,9 +209,21 @@ namespace NDemo
             TD3D11BufferPtr                             mpConstantBuffer;
             TMicrosoftComPtr<ID3D11RasterizerState>     mpRasterState;
             SMeshData                                   mMesh;
+            float                                       mVertexRadius {20.0f};
+            bool                                        mShowDelaunayMesh {true};
         };
 
         SDemoData sData;
+
+        // --------------------------------------------------------------
+
+        void rebuild_index_buffer_from_settings(SDemoData &data)
+        {
+            rebuild_index_buffer_from(data.mMesh,
+                                      data.mShowDelaunayMesh 
+                                        ? data.mMesh.mTriangulatedIndices
+                                        : data.mMesh.mIndices);
+        }
 
         // --------------------------------------------------------------
     }
@@ -347,11 +359,28 @@ namespace NDemo
             }
         }
 
-        ImGui::Begin("Hello World");
-        ImGui::Text("Hello, world %d", 123);
-        ImGui::End();
+        // UI
+        {
+            ImGui::Begin("Delaunay FlipTri Demo");
+            ImGui::Text("AddVertex => LeftClick");
+            ImGui::Text("RemoveVertex => RightClick");
 
-        imguiwrapper::render();
+            if (ImGui::Button("Clear Mesh"))
+            {
+                clear_mouse_clicks();
+            }
+
+            if (ImGui::Checkbox("Show Delaunay Mesh", &sData.mShowDelaunayMesh))
+            {
+                rebuild_index_buffer_from_settings(sData);
+            }
+
+            ImGui::SliderFloat("Vtx Radius", &sData.mVertexRadius, 0.1f, 100.0f);
+
+            ImGui::End();
+
+            imguiwrapper::render();
+        }
 
         gpSwapChain->Present(1, 0);
     }
@@ -373,17 +402,17 @@ namespace NDemo
         float const mouseXF = float(mouseX);
         float const mouseYF = float(gWindowHeight - mouseY);
 
+        float const maxDistance = sData.mVertexRadius;
+        float const maxDistanceSqr = maxDistance * maxDistance;
+
         int32_t index = -1;
         for (int32_t i = 0; i < sData.mMesh.mVertices.size(); ++i)
-        {
-            static constexpr float const skMaxDistance = 20;
-            static constexpr float const skMaxDistanceSqr = skMaxDistance * skMaxDistance;
-
+        {   
             SPositionColorVertex const &v = sData.mMesh.mVertices[i];
             float const distX = v.mPosition.mX - mouseXF;
             float const distY = v.mPosition.mY - mouseYF;
 
-            if ( (distX * distX + distY * distY) <= skMaxDistanceSqr )
+            if ( (distX * distX + distY * distY) <= maxDistanceSqr )
             {
                 index = i;
                 break;
@@ -400,10 +429,20 @@ namespace NDemo
             index = int32_t(sData.mMesh.mVertices.size()-1);
         }
 
+        // make sure we're not duplicating an index in the triangle in progress
+        int32_t const triStart = int32_t(sData.mMesh.mIndices.size()/3)*3;
+        for (int32_t i = triStart; i < sData.mMesh.mIndices.size(); ++i)
+        {
+            if (sData.mMesh.mIndices[i] == uint32_t(index))
+            {
+                return;
+            }
+        }
+
         sData.mMesh.mIndices.push_back(index);
 
         retriangulate(sData.mMesh);
-        rebuild_index_buffer_from(sData.mMesh, sData.mMesh.mTriangulatedIndices);
+        rebuild_index_buffer_from_settings(sData);
     }
 
     // --------------------------------------------------------------
@@ -430,7 +469,7 @@ namespace NDemo
         }
 
         retriangulate(sData.mMesh);
-        rebuild_index_buffer_from(sData.mMesh, sData.mMesh.mTriangulatedIndices);
+        rebuild_index_buffer_from_settings(sData);
     }
 
     // --------------------------------------------------------------
@@ -503,7 +542,7 @@ namespace NDemo
 
         if (!sData.mMesh.mIndices.empty())
         {
-            rebuild_index_buffer_from(sData.mMesh, sData.mMesh.mTriangulatedIndices);
+            rebuild_index_buffer_from_settings(sData);
         }
     }
 
