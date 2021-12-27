@@ -37,79 +37,6 @@ namespace NFXC
     TD3DCompile spD3DCompile = nullptr;
     TD3DReflect spD3DReflect = nullptr;
 
-#if 0
-    void log_error_report(std::string const &errorString, std::string const & shaderSource, std::string const& shaderPath)
-    {
-        // parse the error buffer for line number and message information
-        std::vector<SErrorLineAndMsg> errorInformation;
-        {
-            CStringUtils::TStringVector const errorStringLines = CStringUtils::Tokenize(errorString, "\n", CStringUtils::kAllowEmptyTokens_No);
-
-            std::string const lineTagStartStr = "(";
-            std::string const lineTagEndStr = "): error";
-            std::string const lineNumEndStr = ",";
-                
-            errorInformation.reserve(errorStringLines.size());
-            for (std::string const & errorStringLine : errorStringLines)
-            {
-                // example:
-                // Simple.hlsl(99,23-65): error X3020: type mismatch
-                    
-                std::string::size_type const lineTagStart = errorStringLine.find(lineTagStartStr);
-                if (lineTagStart != std::string::npos)
-                {
-                    std::string::size_type const lineTagEnd = errorStringLine.find(lineTagEndStr, lineTagStart);
-                    if (lineTagEnd != std::string::npos)
-                    {
-                        std::string::size_type const lineNumEnd = errorStringLine.find(lineNumEndStr, lineTagStart);
-                        if ((lineNumEnd != std::string::npos) && (lineNumEnd <= lineTagEnd))
-                        {
-                            std::string::size_type const lineNumStartIdx = lineTagStart + lineTagStartStr.size();
-                            std::string::size_type const lineContentStartIdx = lineTagEnd + lineTagEndStr.size();
-                                
-                            SErrorLineAndMsg errorLineAndMsg;
-                            errorLineAndMsg.mLine = CStringUtils::ParseUint32(errorStringLine.substr(lineNumStartIdx, (lineNumEnd-lineNumStartIdx)));
-                            errorLineAndMsg.mMessage = errorStringLine.substr(lineContentStartIdx, errorStringLine.size()-lineContentStartIdx);
-                            errorInformation.push_back(std::move(errorLineAndMsg));
-                        }
-                    }
-                }
-            }
-        }
-
-        std::string const brokenPath = "D:/BrokenCompileShader.hlsl";
-
-        std::string brokenSource;
-        {
-            CStringUtils::TStringVector shaderSourceLines = CStringUtils::Tokenize(shaderSource, "\n", CStringUtils::kAllowEmptyTokens_Yes);
-
-            // iterate backwards so we can insert information without disturbing line numbers
-            for (int i = int(errorInformation.size()-1); i >= 0; --i)
-            {   
-                SErrorLineAndMsg const & errorInfo = errorInformation[i];
-                if (errorInfo.mLine <= shaderSourceLines.size())
-                {
-                    shaderSourceLines.insert(shaderSourceLines.begin() + errorInfo.mLine - 1, std::string("// !!! ") + errorInfo.mMessage);
-                }
-            }
-                    
-            brokenSource += "/*\n";
-            brokenSource += shaderPath;
-            brokenSource += "\n";
-            brokenSource += errorString;
-            brokenSource += "*/\n";
-
-            for (std::string const & shaderSourceLine : shaderSourceLines)
-            {
-                brokenSource += shaderSourceLine;
-                brokenSource += "\n";
-            }
-        }
-
-        sBrokenSourceLogger(brokenSource, errorString);
-    }
-#endif
-
     bool initialize()
     {
         if (spModule == nullptr)
@@ -174,7 +101,6 @@ namespace NFXC
             char const * const pError = reinterpret_cast<char const *>(pErrorMsgs->GetBufferPointer());
             std::string errorMsg(pError, pError + pErrorMsgs->GetBufferSize()-1);
             printf("%s\n", errorMsg.c_str());
-            //log_error_report(errorMsg, srcData, srcPath);
             return false;
         }
 

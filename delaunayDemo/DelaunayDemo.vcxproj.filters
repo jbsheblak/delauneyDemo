@@ -51,6 +51,9 @@
     <ClCompile Include="source\imguiwrapper.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\Util.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\D3D11Renderer.h">
@@ -66,6 +69,9 @@
       <Filter>source\imgui</Filter>
     </ClInclude>
     <ClInclude Include="include\imguiwrapper.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Util.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

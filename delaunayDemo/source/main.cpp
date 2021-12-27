@@ -12,6 +12,7 @@
 #include "D3D11Renderer.h"
 #include "Demo.h"
 #include "imguiwrapper.h"
+#include "Util.h"
 
 // --------------------------------------------------------------
 
@@ -22,8 +23,8 @@ bool gImguiInit = false;
 
 // --------------------------------------------------------------
 
-WCHAR const* szTitle = L"QuickStartApp";
-WCHAR const* szWindowClass = L"QuickStart";
+WCHAR const* szTitle = L"DelaunayFlipApp";
+WCHAR const* szWindowClass = L"DelaunayFlip";
 
 // --------------------------------------------------------------
 
@@ -45,7 +46,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     register_class(hInstance);
 
     // Perform application initialization:
-    if (!init_instance (hInstance, nCmdShow))
+    if (!init_instance(hInstance, nCmdShow))
     {
         return FALSE;
     }
@@ -107,6 +108,11 @@ ATOM register_class(HINSTANCE hInstance)
 BOOL init_instance(HINSTANCE hInstance, int nCmdShow)
 {
    gInstance = hInstance; // Store instance handle in our global variable
+
+   if (!NUtil::alloc_and_redirect_console())
+   {
+       return FALSE;
+   }
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
