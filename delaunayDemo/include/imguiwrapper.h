@@ -13,8 +13,8 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARA
 
 namespace imguiwrapper
 {
-    bool initialize(HWND hWnd);
-    void shutdown();
-    void new_frame();
-    void render();
-}
+   bool initialize(HWND hWnd);
+   void shutdown();
+   void new_frame();
+   void render();
+} // namespace imguiwrapper

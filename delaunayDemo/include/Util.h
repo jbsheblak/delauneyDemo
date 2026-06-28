@@ -7,5 +7,5 @@
 
 namespace NUtil
 {
-    bool alloc_and_redirect_console();
+   bool alloc_and_redirect_console();
 }

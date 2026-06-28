@@ -1,106 +1,101 @@
 // DelaunayDemo.cpp : Defines the entry point for the application.
 //
 
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
 // Windows Header Files
-#include <windows.h>
-#include <windowsx.h>
-#include <stdlib.h>
-#include <malloc.h>
-#include <memory.h>
-#include <tchar.h>
 #include "D3D11Renderer.h"
 #include "Demo.h"
-#include "imguiwrapper.h"
 #include "Util.h"
+#include "imguiwrapper.h"
+#include <malloc.h>
+#include <memory.h>
+#include <stdlib.h>
+#include <tchar.h>
+#include <windows.h>
+#include <windowsx.h>
 
 // --------------------------------------------------------------
 
 // Global Variables:
-HINSTANCE gInstance;                                // current instance
-HWND gWindow;
-bool gImguiInit = false;
+HINSTANCE gInstance; // current instance
+HWND      gWindow;
+bool      gImguiInit = false;
 
 // --------------------------------------------------------------
 
-WCHAR const* szTitle = L"DelaunayFlipApp";
-WCHAR const* szWindowClass = L"DelaunayFlip";
+WCHAR const * szTitle       = L"DelaunayFlipApp";
+WCHAR const * szWindowClass = L"DelaunayFlip";
 
 // --------------------------------------------------------------
 
 // Forward declarations of functions included in this code module:
-ATOM                register_class(HINSTANCE hInstance);
-BOOL                init_instance(HINSTANCE, int);
-LRESULT CALLBACK    wnd_proc(HWND, UINT, WPARAM, LPARAM);
+ATOM             register_class(HINSTANCE hInstance);
+BOOL             init_instance(HINSTANCE, int);
+LRESULT CALLBACK wnd_proc(HWND, UINT, WPARAM, LPARAM);
 
 // --------------------------------------------------------------
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+   UNREFERENCED_PARAMETER(hPrevInstance);
+   UNREFERENCED_PARAMETER(lpCmdLine);
 
-    register_class(hInstance);
+   register_class(hInstance);
 
-    // Perform application initialization:
-    if (!init_instance(hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
+   // Perform application initialization:
+   if ( !init_instance(hInstance, nCmdShow) )
+   {
+      return FALSE;
+   }
 
-    if (!NRenderer::initialize(gWindow) ||
-        !imguiwrapper::initialize(gWindow) ||
-        !NDemo::initialize())
-    {
-        return 0;
-    }
+   if ( !NRenderer::initialize(gWindow) || !imguiwrapper::initialize(gWindow) || !NDemo::initialize() )
+   {
+      return 0;
+   }
 
-    gImguiInit = true;
-    NDemo::read_data();
+   gImguiInit = true;
+   NDemo::read_data();
 
-    // Main message loop:
-    MSG msg;
-    while (GetMessage(&msg, nullptr, 0, 0))
-    {   
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+   // Main message loop:
+   MSG msg;
+   while ( GetMessage(&msg, nullptr, 0, 0) )
+   {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
 
-        NDemo::simulate();
-        NDemo::render();
-    }
+      NDemo::simulate();
+      NDemo::render();
+   }
 
-    NDemo::save_data();
-    NDemo::shutdown();
-    imguiwrapper::shutdown();
-    NRenderer::shutdown();
+   NDemo::save_data();
+   NDemo::shutdown();
+   imguiwrapper::shutdown();
+   NRenderer::shutdown();
 
-    return (int) msg.wParam;
+   return (int) msg.wParam;
 }
 
 // --------------------------------------------------------------
 
 ATOM register_class(HINSTANCE hInstance)
 {
-    WNDCLASSEXW wcex;
+   WNDCLASSEXW wcex;
 
-    wcex.cbSize = sizeof(WNDCLASSEX);
+   wcex.cbSize = sizeof(WNDCLASSEX);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = wnd_proc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = NULL;
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = nullptr;
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = nullptr;
+   wcex.style         = CS_HREDRAW | CS_VREDRAW;
+   wcex.lpfnWndProc   = wnd_proc;
+   wcex.cbClsExtra    = 0;
+   wcex.cbWndExtra    = 0;
+   wcex.hInstance     = hInstance;
+   wcex.hIcon         = NULL;
+   wcex.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+   wcex.hbrBackground = (HBRUSH) (COLOR_WINDOW + 1);
+   wcex.lpszMenuName  = nullptr;
+   wcex.lpszClassName = szWindowClass;
+   wcex.hIconSm       = nullptr;
 
-    return RegisterClassExW(&wcex);
+   return RegisterClassExW(&wcex);
 }
 
 // --------------------------------------------------------------
@@ -109,21 +104,20 @@ BOOL init_instance(HINSTANCE hInstance, int nCmdShow)
 {
    gInstance = hInstance; // Store instance handle in our global variable
 
-   if (!NUtil::alloc_and_redirect_console())
+   if ( !NUtil::alloc_and_redirect_console() )
    {
-       return FALSE;
+      return FALSE;
    }
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
-   if (!hWnd)
+   if ( !hWnd )
    {
       return FALSE;
    }
 
    gWindow = hWnd;
-   
+
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -134,50 +128,50 @@ BOOL init_instance(HINSTANCE hInstance, int nCmdShow)
 
 LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
-    
-    switch (message)
-    {
-    case WM_COMMAND:
-        {
-            return DefWindowProc(hWnd, message, wParam, lParam);
-        }
-        break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            BeginPaint(hWnd, &ps);
-            EndPaint(hWnd, &ps);
-        }
-        break;
+   ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
 
-    case WM_LBUTTONUP:
-        {
-            if (gImguiInit && !ImGui::GetIO().WantCaptureMouse)
-            {
-                int xPos = GET_X_LPARAM(lParam); 
-                int yPos = GET_Y_LPARAM(lParam);
-                NDemo::add_mouse_click(xPos, yPos);
-            }
-        }
-        break;
+   switch ( message )
+   {
+      case WM_COMMAND:
+      {
+         return DefWindowProc(hWnd, message, wParam, lParam);
+      }
+      break;
+      case WM_PAINT:
+      {
+         PAINTSTRUCT ps;
+         BeginPaint(hWnd, &ps);
+         EndPaint(hWnd, &ps);
+      }
+      break;
 
-    case WM_RBUTTONUP:
-        {
-            if (gImguiInit && !ImGui::GetIO().WantCaptureMouse)
-            {
-                NDemo::remove_last_triangle();
-            }
-        }
-        break;
+      case WM_LBUTTONUP:
+      {
+         if ( gImguiInit && !ImGui::GetIO().WantCaptureMouse )
+         {
+            int xPos = GET_X_LPARAM(lParam);
+            int yPos = GET_Y_LPARAM(lParam);
+            NDemo::add_mouse_click(xPos, yPos);
+         }
+      }
+      break;
 
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
+      case WM_RBUTTONUP:
+      {
+         if ( gImguiInit && !ImGui::GetIO().WantCaptureMouse )
+         {
+            NDemo::remove_last_triangle();
+         }
+      }
+      break;
+
+      case WM_DESTROY:
+         PostQuitMessage(0);
+         break;
+      default:
+         return DefWindowProc(hWnd, message, wParam, lParam);
+   }
+   return 0;
 }
 
 // --------------------------------------------------------------

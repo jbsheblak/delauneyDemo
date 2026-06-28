@@ -1,0 +1,106 @@
+# Retro Studios - Standard Configuration Format
+Language:                                  Cpp
+AccessModifierOffset:                      -3
+AlignAfterOpenBracket:                     Align
+AlignConsecutiveAssignments:
+  Enabled:                                 true
+  AcrossEmptyLines:                        false
+  AcrossComments:                          false
+  AlignCompound:                           false
+  PadOperators:                            true
+AlignConsecutiveBitFields:                 Consecutive
+AlignConsecutiveDeclarations:
+  Enabled:                                 true
+  AcrossEmptyLines:                        false
+  AcrossComments:                          false
+  AlignCompound:                           false
+  PadOperators:                            false
+AlignConsecutiveMacros:                    Consecutive
+AlignConsecutiveShortCaseStatements:
+  Enabled:                                 true
+  AcrossEmptyLines:                        false
+  AcrossComments:                          false
+  AlignCaseColons:                         false
+AllowAllArgumentsOnNextLine:               false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine:          Inline
+AllowShortLambdasOnASingleLine:            None
+AlwaysBreakTemplateDeclarations:           Yes
+BinPackArguments:                          false
+BinPackParameters:                         false
+BraceWrapping:
+   AfterCaseLabel:                         true
+   AfterClass:                             true
+   AfterControlStatement:                  Always
+   AfterEnum:                              true
+   AfterExternBlock:                       true
+   AfterFunction:                          true
+   AfterNamespace:                         true
+   AfterStruct:                            true
+   AfterUnion:                             true
+   BeforeCatch:                            true
+   BeforeElse:                             true
+   BeforeLambdaBody:                       true
+   BeforeWhile:                            true
+   IndentBraces:                           false
+   SplitEmptyFunction:                     true
+   SplitEmptyRecord:                       false
+   SplitEmptyNamespace:                    false
+BreakBeforeBraces:                         Custom
+BreakConstructorInitializers:              BeforeComma
+BreakStringLiterals:                       false
+ColumnLimit:                               160
+ConstructorInitializerIndentWidth:         3
+ContinuationIndentWidth:                   3
+Cpp11BracedListStyle:                      true
+IndentCaseLabels:                          true
+IndentPPDirectives:                        None
+IndentWidth:                               3
+IndentWrappedFunctionNames:                true
+NamespaceIndentation:                      All
+PointerAlignment:                          Middle
+PPIndentWidth:                             3
+QualifierAlignment:                        Custom
+QualifierOrder:                            [inline, static, constexpr, volatile, type, const]
+ReflowComments:                            false
+SortIncludes:                              true
+SpaceAfterCStyleCast:                      true
+SpaceBeforeAssignmentOperators:            true
+SpaceBeforeCpp11BracedList:                true
+TabWidth:                                  3
+
+# Put a space around conditional statements, but not elsewhere.
+SpacesInParens: Custom
+SpacesInParensOptions:
+  InConditionalStatements: true 
+  ExceptDoubleParentheses: false
+  Other: false 
+  InEmptyParentheses: false
+  InCStyleCasts: false
+
+# note on priorities -
+# 0 is always assigned to the header file associated with the source, because of this, use negative values to sort before that.
+# This rule will ensure 'stdafx.h' is always first.
+
+IncludeCategories:
+  - Regex:           '^".*stdafx\.h"$'
+    Priority:        -1
+
+# Use the 'Penalties' before to better choose when to break.
+BreakAfterReturnType: Automatic
+
+# Heavily penalize breaking to a newline in these situations
+PenaltyBreakBeforeMemberAccess: 5000
+PenaltyBreakFirstLessLess: 5000
+PenaltyBreakScopeResolution: 5000
+PenaltyReturnTypeOnItsOwnLine: 5000
+PenaltyBreakAssignment: 5000
+
+# If clang-format encounters what it believes to be an Objective-C file, skip it.
+# This sometimes happens with our .h files that contain Managed C++.
+# This isn't ideal, but avoids an error dialog in Visual Studio's integration.
+
+---
+
+Language: ObjC
+DisableFormat: true
