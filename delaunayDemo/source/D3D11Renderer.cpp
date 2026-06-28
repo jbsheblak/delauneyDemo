@@ -221,8 +221,8 @@ namespace NRenderer
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swapChainDesc.BufferCount = 2;
-        swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+        swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapChainDesc.SampleDesc.Count = 1;
 
         TDXGISwapChain1Ptr pSwapChain;
@@ -246,7 +246,12 @@ namespace NRenderer
                 return false;
             }
 
-            if (FAILED(gpDevice->CreateRenderTargetView(pSwapColor.Get(), nullptr /*pDesc*/, &gpTargetColor)))
+            D3D11_RENDER_TARGET_VIEW_DESC rtView = {};
+            rtView.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+            rtView.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+            rtView.Texture2D.MipSlice = 0;
+
+            if (FAILED(gpDevice->CreateRenderTargetView(pSwapColor.Get(), &rtView /*pDesc*/, &gpTargetColor)))
             {
                 return false;
             }
