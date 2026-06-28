@@ -1,4 +1,4 @@
-# Retro Studios - Standard Configuration Format
+# Standard Configuration Format
 Language:                                  Cpp
 AccessModifierOffset:                      -3
 AlignAfterOpenBracket:                     Align
